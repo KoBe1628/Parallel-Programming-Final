@@ -4,6 +4,7 @@
 #include <omp.h>
 #include <chrono>
 #include <random>
+#include <limits>
 
 using namespace std;
 
@@ -24,6 +25,7 @@ vector<vector<int>> generate_random_graph(int num_nodes, int num_edges) {
     return graph;
 }
 
+// Serial BFS implementation
 void bfs_serial(const vector<vector<int>>& graph, int start) {
     vector<bool> visited(graph.size(), false);
     queue<int> q;
@@ -42,6 +44,7 @@ void bfs_serial(const vector<vector<int>>& graph, int start) {
     }
 }
 
+// Parallel BFS implementation
 void bfs_parallel(const vector<vector<int>>& graph, int start) {
     vector<bool> visited(graph.size(), false);
     queue<int> q;
@@ -61,16 +64,13 @@ void bfs_parallel(const vector<vector<int>>& graph, int start) {
 
 #pragma omp for
             for (int i = 0; i < level_size; ++i) {
-                int node;
+                int node = -1;
 
 #pragma omp critical
                 {
                     if (!q.empty()) {
                         node = q.front();
                         q.pop();
-                    }
-                    else {
-                        node = -1;
                     }
                 }
 
@@ -107,8 +107,18 @@ int main() {
 
     // Ask the user for the number of threads
     int num_threads;
-    cout << "Enter the number of threads to use: ";
-    cin >> num_threads;
+    while (true) {
+        cout << "Enter the number of threads to use (1 to " << max_threads << "): ";
+        cin >> num_threads;
+        if (cin.fail() || num_threads < 1 || num_threads > max_threads) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid input. Please enter a number between 1 and " << max_threads << "." << endl;
+        }
+        else {
+            break;
+        }
+    }
 
     // Set the number of threads for OpenMP
     omp_set_num_threads(num_threads);
@@ -145,6 +155,10 @@ int main() {
 
     // Display the graph size
     cout << "Processed graph with " << num_nodes << " nodes and " << num_edges << " edges.\n";
+
+    // Calculate and display the speedup
+    double speedup = duration_serial.count() / duration_parallel.count();
+    cout << "Speedup: " << speedup << endl;
 
     return 0;
 }
